@@ -12,58 +12,83 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import random
 import math
-#import os
+import os
 
-def user_network_visualizations(input_gml):
-#    print input_gml
+def path_extraction(file, level):
+    dir_level_1 = os.path.dirname(file)
+    dir_level_2 = os.path.dirname(dir_level_1)
+    dir_level_3 = os.path.dirname(dir_level_2)
+    if (level == 1):
+        return dir_level_1
+    elif level == 2:
+        return dir_level_2
+    elif dir_level_3:
+        return dir_level_3
+## Test path_extraction
+#def test_path_extraction():
+#    file = "C:\WikiProject\Controversial Single Pages Simple Wiki\Anonymous Inclusion Without Details\User Graphs With Anonymous"
+#    result = path_extraction(file,3)
+#    print file
+#    print result
+#    
+#test_path_extraction()
+
+def filename_extraction(file):
+    filename = os.path.basename(file)
+    parts = filename.split(".")
+    return parts[0]
+## Test filename extractor    
+#def test_filename_extraction():
+#    file = "C:\WikiProject\Controversial Single Pages Simple Wiki\Anonymous Inclusion Without Details\User Graphs With Anonymous\\abc.txt"
+#    result = filename_extraction(file)
+#    print file
+#    print result
+#test_filename_extraction()
+    
+def user_network_visualizations(path, input_gml):
+
     G = nx.read_gml(input_gml)
     
     weights = []
     for source,dest,attr in G.edges(data=True):
         weights.append(attr['weight'])
-    visualize_histogram(weights,input_gml)
-    visualize_user_network_custom_layout(G)
-#    visualize_user_network_networkx_layout(G)
+#    visualize_histogram(path,weights,input_gml)
+    visualize_user_network_custom_layout(path, G)
+#    visualize_user_network_networkx_layout(path, G)
 
-def visualize_histogram(weights,file):
-#    filename = os.path.basename(file)
+def visualize_histogram(path,weights,file):
+    op_path = path_extraction(path, 2)+"\Histograms\\"+filename_extraction(path)+".png"
+#    print op_path
     x = np.array(weights)
-    print x
-#    x1, x2 = -5, 5
-#    y1, y2 = 0, 100
-#    num_bins = x2-x1
-    plt.hist(x, facecolor='green', bins = max(x)-min(x))
+    if (max(x)-min(x))>0:
+        plt.hist(x, facecolor='green', bins = max(x)-min(x))
+    else:
+        plt.hist(x, facecolor='green')
     plt.xlabel('# Agreement among Users')
     plt.ylabel('Frequencies')
     plt.title("User Agreements")
-#    plt.axis([x1, x2, y1, y2])
+    plt.savefig(op_path)
     plt.show()
 
 
-def visualize_user_network_networkx_layout(G):
-	
-#    options = ['spring','circular','spectral','shell','random']
-    options = ['circular']    
+def visualize_user_network_networkx_layout(path,G):
+    options = ['spring','circular','spectral','shell','random']
     pos_edges = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] > 0]
     neg_edges = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] < 0]
     neutral_edges = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] == 0]
     
     #print(pos_edges,neg_edges, neutral_edges)
     for option in options:
-	node_pos = networkx_layout_options(G, option)
- 
-	nx.draw_networkx_nodes(G, node_pos, node_size=10)
-	nx.draw_networkx_edges(G,node_pos,edgelist=pos_edges,
-                   width=1,alpha=0.5,edge_color='b')
-	nx.draw_networkx_edges(G,node_pos,edgelist=neg_edges,
-                   width=1,alpha=0.5,edge_color='g')
-	nx.draw_networkx_edges(G,node_pos,edgelist=neutral_edges,
-                   width=1,edge_color='y')
-#      op_file = "user_network_"+option+"_layout.png"
-	plt.axis('off')
-#	plt.savefig(op_file) # save as png
-	plt.show() # display
-	
+        node_pos = networkx_layout_options(G, option)
+        nx.draw_networkx_nodes(G, node_pos, node_size=10)
+        nx.draw_networkx_edges(G,node_pos,edgelist=pos_edges,width=1,alpha=0.5,edge_color='b')
+        nx.draw_networkx_edges(G,node_pos,edgelist=neg_edges,width=1,alpha=0.5,edge_color='g')
+        nx.draw_networkx_edges(G,node_pos,edgelist=neutral_edges,width=1,edge_color='y')
+        op_file = path_extraction(path, 2)+"\Networkx Graph Visualizations\\"+filename_extraction(path)+"_"+option+".png"
+        plt.axis('off')
+        plt.savefig(op_file) # save as png
+        plt.show() # display
+        
 
 def networkx_layout_options(G, option):
 	
@@ -83,8 +108,10 @@ def log_scaling_of_edge_weights(n):
     
 
 
-def visualize_user_network_custom_layout(G):
+def visualize_user_network_custom_layout(path, G):
     
+    op_path = path_extraction(path, 2)+"\Custom Graph Visualizations\\"+filename_extraction(path)+".png"
+
     X_CENTRE = 500
     Y_CENTRE = 300
     X_UNIT = 700
@@ -172,7 +199,7 @@ def visualize_user_network_custom_layout(G):
             neighbouring_wt = 0
             for neighbour in nx.all_neighbors(G, node):
                 out_neighbours += 1
-#                neighbouring_wt += G[node][neighbour]['weight']
+#                neighbouring_wt += G[node][neighbour]#['weight']
             node_sizes_neighbouring_weights.append(neighbouring_wt*50)
             node_sizes_neighbour_count.append(out_neighbours*100)
         # Normalize the nodes
@@ -180,6 +207,7 @@ def visualize_user_network_custom_layout(G):
         for idx in range(len(node_sizes_neighbour_count)):
             node_sizes_neighbour_count[idx] = node_sizes_neighbour_count[idx]*100//range_node_sizes_neighbour_count
         print node_sizes_neighbour_count
+#        print node_sizes_neighbouring_weights
         
 
 #        for i in range(len(adj_matrix)):
@@ -198,26 +226,33 @@ def visualize_user_network_custom_layout(G):
         nx.draw_networkx_edges(G,node_pos,edgelist=neg_edges,width=1,alpha=0.5,edge_color='g')
         nx.draw_networkx_edges(G,node_pos,edgelist=neutral_edges,width=1,alpha=0.5,edge_color='y')
         plt.axis('off')
-        plt.savefig("user_network_custom_layout.png") # save as png
+        plt.savefig(op_path) # save as png
         plt.show() # display        
-                      
-
     
     colors_file.close()
 
 
 def main():
-    files = ["Anarchism","Christianity","Circumcision","George_W._Bush","Global_warming","Jesus","LWWEe","Muhammad","United_States"]
-    for idx in range(len(files)):
-        print files[idx]
+    controversial_articles = ["Anarchism","Christianity","Circumcision","George_W._Bush","Global_warming","Jesus","LWWEe","Muhammad","United_States"]
+    primary_ip_dir = "C:\WikiProject\\"
+    internal_ip_dir_anonymous_inclusion_without_details = "Controversial Single Pages Simple Wiki\Anonymous Inclusion Without Details\User Graphs With Anonymous\\"
+    internal_ip_dir_anonymous_inclusion_with_IP = "Controversial Single Pages Simple Wiki\Anonymous Inclusion With IP Address\User Graphs With Anonymous\\"
+    input_ip_dir_only_anonymous = "Controversial Single Pages Simple Wiki\Only Anonymous\User Graphs With Anonymous\\"
+    working_ip_dir = input_ip_dir_only_anonymous
+    
+    for idx in range(len(controversial_articles)):
+        print controversial_articles[idx]
         print "---------------"
-        inputpath = "C:\WikiProject\Controversial Pages Single\User Graphs With Anonymous\\"+files[idx]+".gml"
+        inputpath = primary_ip_dir+working_ip_dir+controversial_articles[idx]+".gml"
         inputFile = open(inputpath,"r")
-        user_network_visualizations(inputFile)
+        user_network_visualizations(inputpath,inputFile)
         inputFile.close()
-
-
+        
+        
 main()
+
+
+#main()
 #user_network_visualizations('C:\WikiProject\Controversial Pages Single\User Graphs With Anonymous\Anarchism.gml')
 #user_network_visualizations('user_graph.gml')
 #user_network_visualizations('test_user_graph.gml')

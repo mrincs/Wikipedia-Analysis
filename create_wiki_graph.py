@@ -6,6 +6,39 @@ Created on Fri Feb 20 17:30:35 2015
 """
 
 import networkx as nx
+import os
+
+def path_extraction(file, level):
+    dir_level_1 = os.path.dirname(file)
+    dir_level_2 = os.path.dirname(dir_level_1)
+    dir_level_3 = os.path.dirname(dir_level_2)
+    if (level == 1):
+        return dir_level_1
+    elif level == 2:
+        return dir_level_2
+    elif dir_level_3:
+        return dir_level_3
+## Test path_extraction
+#def test_path_extraction():
+#    file = "C:\WikiProject\Controversial Single Pages Simple Wiki\Anonymous Inclusion Without Details\User Graphs With Anonymous"
+#    result = path_extraction(file,3)
+#    print file
+#    print result
+#    
+#test_path_extraction()
+
+def filename_extraction(file):
+    filename = os.path.basename(file)
+    parts = filename.split(".")
+    return parts[0]
+## Test filename extractor    
+#def test_filename_extraction():
+#    file = "C:\WikiProject\Controversial Single Pages Simple Wiki\Anonymous Inclusion Without Details\User Graphs With Anonymous\\abc.txt"
+#    result = filename_extraction(file)
+#    print file
+#    print result
+#test_filename_extraction()
+
 
 def initialize_wiki_graph():
     G = nx.Graph()
@@ -25,6 +58,17 @@ def update_user_links(G,user1,user2,weight):
         G.add_edge(user1,user2,weight=weight)       
     return
 
+#Only add edges at least one of whose end is anonymous
+def update_user_links_only_anonymous(G,user1,user2,weight):
+    if G.has_edge(user1,user2):
+        G[user1][user2]['weight']+=weight
+    else:
+        if is_anonymous(user1) or is_anonymous(user2):
+            update_users(G, user1)
+            update_users(G, user2)
+            G.add_edge(user1,user2,weight=weight)       
+    return
+
 #Update user network
 def include_in_network(G,reverter,revertedTo,reverted):
     update_users(G,reverter)
@@ -35,37 +79,19 @@ def include_in_network(G,reverter,revertedTo,reverted):
 #    update_user_links(G,reverted,revertedTo,-1)
     return
     
-#def graph_properties(G):
-#    print "#######"
-#    print "Nodes:"
-#    print "====================="
-#    print G.nodes()
-#    print "Edges:"
-#    print "====================="
-#    print G.edges()
+    
+#Update user network only anonymous
+def include_in_network_only_anonymous(G,reverter,revertedTo,reverted):
+    update_user_links_only_anonymous(G,reverter,reverted,-1)
+    update_user_links_only_anonymous(G,reverter,revertedTo,1)
+    return
+    
+def graph_properties(G):
+    structural_balance(G)
 #    print "Radius:", nx.radius(G)
 #    print "Diameter:", nx.diameter(G)
 #    print "Density:", nx.density(G)
 #    print "Periphery:", nx.periphery(G)
-    
-def parseRevisionFile(inputFile):
-    G = initialize_wiki_graph()
-    for lines in inputFile:
-
-        if lines[0] != '#':
-            words = lines.split(",")
-            reverter = int(words[0].strip())
-            revertedTo = int(words[1].strip())
-            reverted = int(words[2].strip())
-            #if reverter != -1 and revertedTo != -1 and reverted != -1:
-            include_in_network(G,reverter,revertedTo,reverted)
-#                print reverter,revertedTo,reverted
-        else:
-            #New pageID
-            continue
-#    nx.write_gml(G,'United_States.gml')
-    structural_balance(G)
-#    graph_properties(G)
 
 
 def structural_balance(G):
@@ -112,16 +138,89 @@ def structural_balance(G):
     print "errors:",errors
 
 
-def main():
-    files = ["Anarchism","Christianity","Circumcision","George_W._Bush","Global_warming","Jesus","LWWEe","Muhammad","United_States"]
-    for idx in range(len(files)):
-        print files[idx]
-        print "---------------"
-        inputpath = "C:\WikiProject\Controversial Pages Single\Revision Logs\\"+files[idx]+".log"
-        #inputpath = "test.log"
-        inputFile = open(inputpath,"r")
-        parseRevisionFile(inputFile)
-        inputFile.close()
+# Entry Function: Reads revision file containing list of reverts
+# in *.log format, parse it and create an  undirected graph. Output is saved 
+# in *.gml format 
+def parseRevisionFile(path, inputFile):
+    op_path = path_extraction(path, 2)+"\User Graphs With Anonymous\\"+filename_extraction(path)+".gml"
+#    primary_op_dir = "C:\WikiProject\\"
+##    internal_op_dir_anonymous_inclusion_without_details = "Controversial Single Pages Simple Wiki\Anonymous Inclusion Without Details\User Graphs With Anonymous\\"
+#    internal_op_dir_anonymous_inclusion_with_IP = "Controversial Single Pages Simple Wiki\Anonymous Inclusion With IP Address\User Graphs With Anonymous\\"
+#    working_op_dir = internal_op_dir_anonymous_inclusion_with_IP
     
+    G = initialize_wiki_graph()
+    
+    
+    for lines in inputFile:
+        if lines[0] != '#':
+            words = lines.split(",")
+#            reverter = int(words[0].strip())
+#            revertedTo = int(words[1].strip())
+#            reverted = int(words[2].strip())
+            reverter = words[0].strip()
+            revertedTo = words[1].strip()
+            reverted = words[2].strip()
+            #if reverter != -1 and revertedTo != -1 and reverted != -1:
+            include_in_network(G,reverter,revertedTo,reverted)
+#                print reverter,revertedTo,reverted
+        else:
+            #New pageID
+            continue
+    nx.write_gml(G, op_path)
+#    nx.write_gml(G,primary_op_dir+working_op_dir+op_filename+".gml")
+    graph_properties(G)
 
-main()    
+# Test if the input is a real user_id or anonymous
+def is_anonymous(num):
+    try:
+        int(num)
+        return False
+    except ValueError:
+        return True
+        
+## Test is_anonymous
+#def test_is_anonymous():
+#    result = is_anonymous(45)
+#    print result
+#test_is_anonymous()
+
+def parseRevisionFileOnlyAnonymous(path, inputFile):
+    op_path = path_extraction(path, 2)+"\User Graphs With Anonymous\\"+filename_extraction(path)+".gml"
+
+    G = initialize_wiki_graph()
+    
+    
+    for lines in inputFile:
+        if lines[0] != '#':
+            words = lines.split(",")
+            reverter = words[0].strip()
+            revertedTo = words[1].strip()
+            reverted = words[2].strip()
+            include_in_network_only_anonymous(G,reverter,revertedTo,reverted)
+        else:
+            #New pageID
+            continue
+    nx.write_gml(G,op_path)
+#    graph_properties(G)
+
+
+
+def main():
+    controversial_articles = ["Anarchism","Christianity","Circumcision","George_W._Bush","Global_warming","Jesus","LWWEe","Muhammad","United_States"]
+    primary_ip_dir = "C:\WikiProject\\"
+#    internal_ip_dir_anonymous_inclusion_without_details = "Controversial Single Pages Simple Wiki\Anonymous Inclusion Without Details\Revision Logs\\"
+#    internal_ip_dir_anonymous_inclusion_with_IP = "Controversial Single Pages Simple Wiki\Anonymous Inclusion With IP Address\Revision Logs\\"
+    input_ip_dir_only_anonymous = "Controversial Single Pages Simple Wiki\Only Anonymous\Revision Logs\\"
+    working_ip_dir = input_ip_dir_only_anonymous
+   
+    for idx in range(len(controversial_articles)):
+        print controversial_articles[idx]
+        print "---------------"
+        inputpath = primary_ip_dir+working_ip_dir+controversial_articles[idx]+".log"
+        inputFile = open(inputpath,"r")
+        parseRevisionFileOnlyAnonymous(inputpath, inputFile)
+#        parseRevisionFile(inputFile,controversial_articles[idx])
+        inputFile.close()
+
+
+main()
