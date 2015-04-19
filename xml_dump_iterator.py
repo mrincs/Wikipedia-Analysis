@@ -9,6 +9,7 @@ from mw.xml_dump import Iterator
 from mw.xml_dump import Page
 from mw.xml_dump import Revision
 from mw.lib import reverts
+import wikipedia
 
 
 
@@ -71,7 +72,7 @@ def parse_revisions(xml_dump, output_file):
             page_iter_idx = page_iter_idx+1
             page = Page(page_iter.id, page_iter.title, page_iter.namespace,  page_iter.redirect, page_iter.restrictions, page_iter.__iter__()) 
             #print("\n",page_iter_idx,". PageID: ",page.id, file=output_file)
-            print("#", file=output_file)
+            output_file.write("#\n")
             rev_iter_idx = 0
             detector = reverts.Detector()
             edit_list = []
@@ -87,7 +88,7 @@ def parse_revisions(xml_dump, output_file):
                     revertedTo = find_user_including_anonymous(edit_list, revert_info.reverted_to)
                     for i in range(len(revert_info.reverteds)):
                         reverted = find_user_including_anonymous(edit_list, revert_info.reverteds[i])
-                        print(reverter,",",revertedTo,",",reverted, file=output_file)
+                        output_file.write(reverter,",",revertedTo,",",reverted,"\n")
 
 
 # Output is saved in <page_title>.log file.
@@ -112,7 +113,7 @@ def parse_specific_pages_given_pageID(xml_dump, page_id, output_file):
                     revertedTo = find_user(edit_list, revert_info.reverted_to)
                     for i in range(len(revert_info.reverteds)):
                         reverted = find_user(edit_list, revert_info.reverteds[i])
-                        print(reverter,",",revertedTo,",",reverted, file=output_file)
+                        output_file.write(reverter,",",revertedTo,",",reverted,"\n")
             break
 
 
@@ -140,7 +141,7 @@ def parse_specific_pages_given_pageID_anonymous(xml_dump, page_id, output_file):
                     revertedTo = find_user(edit_list, revert_info.reverted_to)
                     for i in range(len(revert_info.reverteds)):
                         reverted = find_user(edit_list, revert_info.reverteds[i])
-                        print(reverter,",",revertedTo,",",reverted, file=output_file)
+                        output_file.write(reverter,",",revertedTo,",",reverted,"\n")
             break
 
 
@@ -171,10 +172,113 @@ def parse_simple_wiki_controversial_articles(xml_stub_history):
         print("Created ",page_title,".log in: ", primary_op_dir,internal_op_dir)
 
 
+
+def find_page_id_given_page_title(title):
+    try:
+        page = wikipedia.page(title.strip())
+        if page is not None:
+            return page.pageid.strip()
+        return -1
+    except wikipedia.exceptions.PageError:
+        return -1
+
+## Test find_page_id_given_page_title
+#def test_find_page_id_given_page_title():
+#    print(find_page_id_given_page_title("George_W._Bush "))
+#    
+#test_find_page_id_given_page_title()
+
+def parse_wikipedia_controversial_articles(xml_stub_history):
+    primary_ip_dir = "C:\WikiProject\\"
+    internal_ip_dir = "Controversial Single Pages Wikipedia\\"
+    controversial_page_titles_fileName = "controversial_page_titles.txt"
+    controversial_page_ids_fileName = "controversial_wikipedia_page_ids.txt"
+    
+    # Create page_ids file corresponding to page_titles
+    inputFile = open(primary_ip_dir+internal_ip_dir+controversial_page_titles_fileName,'r')
+    outputFile = open(primary_ip_dir+internal_ip_dir+controversial_page_ids_fileName,'w')
+    
+    for title in inputFile:
+        outputFile.write(title.strip()+" "+find_page_id_given_page_title(title))
+        outputFile.write("\n")
+    
+    inputFile.close()
+    outputFile.close()
+    
+    # Parse xml_dump to retrieve the reverts of controversial pages
+    inputFile = open(primary_ip_dir+internal_ip_dir+controversial_page_ids_fileName, 'r')
+
+    titles = []
+    pageID = []
+    for line in inputFile:
+        parts = line.split()
+        titles.append(parts[0].strip())
+        pageID.append(int(parts[1]))
+    
+    inputFile.close()
+    
+    inputFile = open(xml_stub_history,'r',encoding='utf-8')
+    article_count = 0    
+    dump_iter = Iterator.from_file(inputFile)
+    for page_iter in dump_iter:
+        print(page_iter.id)
+        if page_iter.id in pageID:
+            article_count += 1
+            try:
+                item_idx = pageID.index(page_iter.id)
+            except ValueError:
+                continue
+            outputFile = open(primary_ip_dir+internal_ip_dir+"Anonymous Inclusion With IP Address\Revision Logs\\"+titles[item_idx]+".log", mode='w', encoding='utf-8')
+            page = Page(page_iter.id, page_iter.title, page_iter.namespace,  page_iter.redirect, page_iter.restrictions, page_iter.__iter__()) 
+            rev_iter_idx = 0
+            detector = reverts.Detector()
+            # edit_list contains tuples <revision_id, user_id> to track previous revisions. For anonymous, saved user_id in form <IP address>
+            edit_list = []
+            for rev_iter in page:
+                rev_iter_idx = rev_iter_idx+1
+                if rev_iter.contributor.id != None:
+                    edit_list.append([rev_iter.id, rev_iter.contributor.id])
+                else:
+                    edit_list.append([rev_iter.id, rev_iter.contributor.user_text])
+                revert_info = detector.process(rev_iter.sha1, rev_iter.id)
+                if revert_info != None:
+                    reverter = find_user(edit_list, revert_info.reverting) 
+                    revertedTo = find_user(edit_list, revert_info.reverted_to)
+                    for i in range(len(revert_info.reverteds)):
+                        reverted = find_user(edit_list, revert_info.reverteds[i])
+                        outputFile.write(str(reverter)+","+str(revertedTo)+","+str(reverted))
+                        outputFile.write("\n")
+        
+        outputFile.close()
+        # All articles found
+        if (article_count == len(pageID)):
+            break
+    inputFile.close()
+        
+        
+
+# Page Links in level1 from Anarchism -simple wiki
+
 def main():
-    xml_stub_history = "C:\WikiProject\Simple Wiki dumps\simplewiki-20141222-stub-meta-history.xml"
-    parse_simple_wiki_controversial_articles(xml_stub_history)
+    xml_stub_history_simple_wiki = "C:\WikiProject\Simple Wiki dumps\simplewiki-20141222-stub-meta-history.xml"
+#"""
+#xml1 : 1
+#xml2 : 10000
+#xml3 : 25000
+#xml10 : 925000
+#xml12:  1825000
+#xml13 : 2420000
+#xml14 : 3120000
+#xml15 : 3920000
+#xml18 : 7500000
+#xml19 : 9220000
+#xml20 : 11000000
+#"""
+#    xml_stub_history_wikipedia = "C:\WikiProject\Wikipedia Dumps\enwiki-20150304-stub-meta-history10.xml"
+    parse_simple_wiki_controversial_articles(xml_stub_history_simple_wiki)
+#    parse_wikipedia_controversial_articles(xml_stub_history_wikipedia)    
 
 
 
-main()
+if __name__=='__main__':
+    main()

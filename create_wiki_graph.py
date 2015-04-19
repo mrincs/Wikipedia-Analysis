@@ -40,8 +40,12 @@ def filename_extraction(file):
 #test_filename_extraction()
 
 
-def initialize_wiki_graph():
+def initialize_undirected_wiki_graph():
     G = nx.Graph()
+    return G
+    
+def initialize_directed_wiki_graph():
+    G = nx.DiGraph()
     return G
 
 #Add Nodes/Users if not already present
@@ -87,7 +91,9 @@ def include_in_network_only_anonymous(G,reverter,revertedTo,reverted):
     return
     
 def graph_properties(G):
-    structural_balance(G)
+    print "No. of triangles:", nx.triangles(G)
+    print "Clustering: ", nx.clustering(G)
+#    structural_balance(G)
 #    print "Radius:", nx.radius(G)
 #    print "Diameter:", nx.diameter(G)
 #    print "Density:", nx.density(G)
@@ -142,13 +148,13 @@ def structural_balance(G):
 # in *.log format, parse it and create an  undirected graph. Output is saved 
 # in *.gml format 
 def parseRevisionFile(path, inputFile):
-    op_path = path_extraction(path, 2)+"\User Graphs With Anonymous\\"+filename_extraction(path)+".gml"
+    op_path = path_extraction(path, 2)+"\User Graphs With Anonymous gml\\"+filename_extraction(path)+".gml"
 #    primary_op_dir = "C:\WikiProject\\"
 ##    internal_op_dir_anonymous_inclusion_without_details = "Controversial Single Pages Simple Wiki\Anonymous Inclusion Without Details\User Graphs With Anonymous\\"
 #    internal_op_dir_anonymous_inclusion_with_IP = "Controversial Single Pages Simple Wiki\Anonymous Inclusion With IP Address\User Graphs With Anonymous\\"
 #    working_op_dir = internal_op_dir_anonymous_inclusion_with_IP
     
-    G = initialize_wiki_graph()
+    G = initialize_undirected_wiki_graph()
     
     
     for lines in inputFile:
@@ -168,7 +174,7 @@ def parseRevisionFile(path, inputFile):
             continue
     nx.write_gml(G, op_path)
 #    nx.write_gml(G,primary_op_dir+working_op_dir+op_filename+".gml")
-    graph_properties(G)
+#    graph_properties(G)
 
 # Test if the input is a real user_id or anonymous
 def is_anonymous(num):
@@ -187,7 +193,7 @@ def is_anonymous(num):
 def parseRevisionFileOnlyAnonymous(path, inputFile):
     op_path = path_extraction(path, 2)+"\User Graphs With Anonymous\\"+filename_extraction(path)+".gml"
 
-    G = initialize_wiki_graph()
+    G = initialize_undirected_wiki_graph()
     
     
     for lines in inputFile:
@@ -202,23 +208,94 @@ def parseRevisionFileOnlyAnonymous(path, inputFile):
             continue
     nx.write_gml(G,op_path)
 #    graph_properties(G)
+    
 
+# Group all anonymous in a single node
+def group_anonymous(path):
+    op_path = path_extraction(path, 3)+"\\"+"Anonymous Inclusion Without Details\Revision Logs\\"+filename_extraction(path)+".log"
+#    print "Input Path: ",path
+#    print "Output Path: ", op_path    
+    inputFile = open(path, 'r')
+    outputFile = open(op_path,'w')
+    for lines in inputFile:
+        words = lines.split(",")
+        reverter = words[0].strip()
+        revertedTo = words[1].strip()
+        reverted = words[2].strip()
+#        print "Before:", reverter, revertedTo, reverted 
+        if (is_anonymous(reverter)):
+            reverter = -1
+#        else:
+#            reverter = int(reverter)
+        if (is_anonymous(revertedTo)):
+            revertedTo = -1
+#        else:
+#            revertedTo = int(revertedTo)
+        if (is_anonymous(reverted)):
+            reverted = -1
+#        else:
+#            reverted = int(reverted)
+#        print "After:", reverter, revertedTo, reverted
+        outputFile.write(str(reverter)+","+str(revertedTo)+","+str(reverted)+"\n")
+    inputFile.close()
+    outputFile.close()
+    
+    inputFile = open(op_path, 'r')
+    parseRevisionFileOnlyAnonymous(op_path, inputFile)
+    inputFile.close()
+    
+
+# Create a new graph where there will be a directed edge only between reverter and reverted (thereby omitting revertedTo)
+def create_Directed_reverter_reverted_network(path, inputFile):
+    op_path = path_extraction(path, 2)+"\Reverter Reverted Networks Directed gml\\"+filename_extraction(path)+".gml"
+
+    G = initialize_undirected_wiki_graph()
+    
+    
+    for lines in inputFile:
+        if lines[0] != '#':
+            words = lines.split(",")
+            reverter = words[0].strip()
+            reverted = words[2].strip()
+            include_in_network_only_reverter_reverted(G,reverter,reverted)
+        else:
+            #New pageID
+            continue
+    nx.write_gml(G,op_path)
+#    graph_properties(G)
+
+
+# Called from create_Directed_reverter_reverted_network()    
+def include_in_network_only_reverter_reverted(G,reverter,reverted):
+    update_users(G,reverter)
+    update_users(G,reverted)
+    update_user_links(G,reverter,reverted,1)
+    return    
 
 
 def main():
-    controversial_articles = ["Anarchism","Christianity","Circumcision","George_W._Bush","Global_warming","Jesus","LWWEe","Muhammad","United_States"]
+#    controversial_articles = ["Anarchism"]
+    controversial_articles = ["Anarchism","Christianity","Circumcision","George_W._Bush","Global_warming","Jesus","World_Wrestling_Entertainment_roster","Muhammad","United_States"]
     primary_ip_dir = "C:\WikiProject\\"
 #    internal_ip_dir_anonymous_inclusion_without_details = "Controversial Single Pages Simple Wiki\Anonymous Inclusion Without Details\Revision Logs\\"
 #    internal_ip_dir_anonymous_inclusion_with_IP = "Controversial Single Pages Simple Wiki\Anonymous Inclusion With IP Address\Revision Logs\\"
-    input_ip_dir_only_anonymous = "Controversial Single Pages Simple Wiki\Only Anonymous\Revision Logs\\"
-    working_ip_dir = input_ip_dir_only_anonymous
+#    input_ip_dir_only_anonymous = "Controversial Single Pages Simple Wiki\Only Anonymous\Revision Logs\\"
+    input_ip_dir_anonymous_inclusion_with_IP_wiki = "Controversial Single Pages Wikipedia\Anonymous Inclusion With IP Address\Revision Logs\\"
+#    input_ip_dir_anonymous_inclusion_without_details = "Controversial Single Pages Wikipedia\Anonymous Inclusion Without Details\Revision Logs\\"
+    working_ip_dir = input_ip_dir_anonymous_inclusion_with_IP_wiki
    
     for idx in range(len(controversial_articles)):
         print controversial_articles[idx]
         print "---------------"
         inputpath = primary_ip_dir+working_ip_dir+controversial_articles[idx]+".log"
-        inputFile = open(inputpath,"r")
-        parseRevisionFileOnlyAnonymous(inputpath, inputFile)
+        print inputpath
+        try:
+            inputFile = open(inputpath,"r")
+        except IOError:
+            continue
+        create_Directed_reverter_reverted_network(inputpath, inputFile)
+        #parseRevisionFileOnlyAnonymous(inputpath, inputFile)
+        #group_anonymous(inputpath)
 #        parseRevisionFile(inputFile,controversial_articles[idx])
         inputFile.close()
 

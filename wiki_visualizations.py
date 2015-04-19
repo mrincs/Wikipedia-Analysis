@@ -52,8 +52,8 @@ def user_network_visualizations(path, input_gml):
     weights = []
     for source,dest,attr in G.edges(data=True):
         weights.append(attr['weight'])
-#    visualize_histogram(path,weights,input_gml)
-    visualize_user_network_custom_layout(path, G)
+    visualize_histogram(path,weights,input_gml)
+#    visualize_user_network_custom_layout(path, G)
 #    visualize_user_network_networkx_layout(path, G)
 
 def visualize_histogram(path,weights,file):
@@ -110,7 +110,7 @@ def log_scaling_of_edge_weights(n):
 
 def visualize_user_network_custom_layout(path, G):
     
-    op_path = path_extraction(path, 2)+"\Custom Graph Visualizations\\"+filename_extraction(path)+".png"
+    op_path = path_extraction(path, 2)+"\Custom Graph Visualizations\\"+filename_extraction(path)+".pdf"
 
     X_CENTRE = 500
     Y_CENTRE = 300
@@ -220,6 +220,7 @@ def visualize_user_network_custom_layout(path, G):
         neg_edges = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] < 0]
         neutral_edges = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] == 0]
         
+        plt.figure(figsize=(6,6))
         nx.draw_networkx_nodes(G, pos=node_pos, node_size=node_sizes_neighbour_count)
 #        nx.draw_networkx_labels(G, pos=node_pos, font_size=10)
         nx.draw_networkx_edges(G,node_pos, edgelist=pos_edges,width=1,alpha=0.5,edge_color='b')
@@ -233,12 +234,14 @@ def visualize_user_network_custom_layout(path, G):
 
 
 def main():
-    controversial_articles = ["Anarchism","Christianity","Circumcision","George_W._Bush","Global_warming","Jesus","LWWEe","Muhammad","United_States"]
+    controversial_articles = ["Anarchism","Christianity","Circumcision","George_W._Bush","Global_warming","Jesus","World_Wrestling_Entertainment_roster","Muhammad","United_States"]
     primary_ip_dir = "C:\WikiProject\\"
     internal_ip_dir_anonymous_inclusion_without_details = "Controversial Single Pages Simple Wiki\Anonymous Inclusion Without Details\User Graphs With Anonymous\\"
     internal_ip_dir_anonymous_inclusion_with_IP = "Controversial Single Pages Simple Wiki\Anonymous Inclusion With IP Address\User Graphs With Anonymous\\"
-    input_ip_dir_only_anonymous = "Controversial Single Pages Simple Wiki\Only Anonymous\User Graphs With Anonymous\\"
-    working_ip_dir = input_ip_dir_only_anonymous
+    internal_ip_dir_only_anonymous = "Controversial Single Pages Simple Wiki\Only Anonymous\User Graphs With Anonymous\\"
+    internal_ip_dir_anonymous_inclusion_without_details_wiki = "Controversial Single Pages Wikipedia\Anonymous Inclusion With IP Address\User Graphs With Anonymous gml\\"
+    internal_ip_dir_reverter_reverted_network = "Controversial Single Pages Wikipedia\Anonymous Inclusion With IP Address\Reverter Reverted Networks gml\\" 
+    working_ip_dir = internal_ip_dir_reverter_reverted_network
     
     for idx in range(len(controversial_articles)):
         print controversial_articles[idx]
