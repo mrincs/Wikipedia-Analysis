@@ -8,6 +8,9 @@ Created on Fri Feb 20 17:30:35 2015
 import networkx as nx
 import os
 import csv
+import sys
+
+csv.field_size_limit(sys.maxsize)
 
 def path_extraction(file, level):
     dir_level_1 = os.path.dirname(file)
@@ -214,7 +217,6 @@ def create_dict_by_pageid():
     user_list = []
     
     for line in inputFile:
-        print(line)
         words = line.split(",")
         pageID = int(words[0])
         if pageID == prev_pageID:
@@ -234,30 +236,50 @@ def create_dict_by_pageid():
     return page_level_dict
 
 
-def calculate_overlaps_of_authors_between_pages(dict):
+def calculate_overlaps_of_authors_between_pages():
     
     inputFileName = "/N/u/mmaity/Karst/WikiAnalysis/Wikidumps/Output_Logs/page_edit_list_dict.csv"
+    #inputFileName = "/N/u/mmaity/Karst/WikiAnalysis/Wikidumps/Output_Logs/sample_page_edit_list_dict.csv"
     outputFileName = "/N/u/mmaity/Karst/WikiAnalysis/Wikidumps/Output_Logs/page_overlaps.graphml"
-    #dict = read_dict_from_file(inputFileName)
+    dict = read_dict_from_file(inputFileName)
     G = initialize_undirected_wiki_graph()
 
     for pageID1, user_list1 in dict.items():
         for pageID2, user_list2 in dict.items():
+            print("<", pageID1, pageID2, ">")
             pageID1 = int(pageID1)
             pageID2 = int(pageID2)
-            print(pageID1, pageID2)
+            #print(pageID1, pageID2)
             overlapping_J_coef = find_overlaps_between_two_pageIDs(user_list1, user_list2)
-            update_users(G, pageID1)
-            update_users(G, pageID2)
-            update_user_links(G, pageID1, pageID2, overlapping_J_coef)
+            if overlapping_J_coef != 0:
+                update_users(G, pageID1)
+                update_users(G, pageID2)
+                update_user_links(G, pageID1, pageID2, overlapping_J_coef)
 
-    nx.graphml(G, outputFileName)
+    nx.write_graphml(G, outputFileName)
     return
 
+def preprocess_dict_values(value):
+
+    if len(value) == 0:
+        return null
+    
+    value = value[1:len(value)-1]
+    values = [int(i) for i in value.split(',')]
+    return values
 
 
 def find_overlaps_between_two_pageIDs(list1, list2):
 
+    #print("List1:", list1, len(list1))
+    #print("List2:", list2, len(list2))
+    
+    if len(list1) == 2 or len(list2) == 2: #A length for string '[]'
+        return 0
+    
+    list1 = preprocess_dict_values(list1)
+    list2 = preprocess_dict_values(list2)
+    
     if len(list1) > len(list2):
         tmp = list1
         list1 = list2
@@ -276,8 +298,8 @@ def find_overlaps_between_two_pageIDs(list1, list2):
 
 
 def main():
-    page_level_dict = create_dict_by_pageid()
-    calculate_overlaps_of_authors_between_pages(page_level_dict)
+    #page_level_dict = create_dict_by_pageid()
+    calculate_overlaps_of_authors_between_pages()
 
 
 

@@ -164,7 +164,7 @@ def is_anonymous(num):
 
 # Create a new graph where there will be a edge only between reverter and reverted (thereby omitting revertedTo)
 def create_undirected_reverter_reverted_network(inputFile):
-    op_path = "/N/u/mmaity/Karst/WikiAnalysis/Wikidumps/Output_Logs/reverts_network.gml"
+    op_path = "~/WikiAnalysis/Wikidumps/Output_Logs/reverts_network.gml"
 
     G = initialize_undirected_wiki_graph()
     
@@ -192,10 +192,9 @@ def include_in_network_only_reverter_reverted(G,reverter,reverted):
 
 
 def main():
-    primary_ip_dir = "/N/u/mmaity/Karst/"
-    internal_ip_dir = "WikiAnalysis/Wikidumps/Output_Logs/"
-    inputpath = primary_ip_dir+internal_ip_dir+"reverts_.log"
-    inputFile = open(inputpath, "r")
+    primary_ip_dir = "~/WikiAnalysis/Wikidumps/Output_Logs/"
+    inputpath = primary_ip_dir+"reverts_.log"
+    inputFile = open(inputpath, "rb")
     create_undirected_reverter_reverted_network(inputFile)
     inputFile.close()
 
