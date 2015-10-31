@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+    # -*- coding: utf-8 -*-
 """
 Created on Fri Feb 20 17:30:35 2015
 
@@ -9,6 +9,7 @@ import networkx as nx
 import os
 import csv
 import sys
+import time
 
 csv.field_size_limit(sys.maxsize)
 
@@ -192,12 +193,32 @@ def include_in_network_only_reverter_reverted(G,reverter,reverted):
     update_users(G,reverter)
     update_users(G,reverted)
     update_user_links(G,reverter,reverted,1)
-    return    
+    return
+
+def calculate_number_of_revs(dict):
+    num_revisions = []
+    for key, val in dict.items():
+        if val is not None:
+            num_revisions.append(len(val))
+    return num_revisions
+
+def filter_page_ids_by_num_authors(dict):
+    threshold = 10
+    num_pages_above_threshold = 0
+    mod_dict = {}
+    for key, val in dict.items():
+        if val is not None and len(val) > threshold:
+            mod_dict[key] = val
+            num_pages_above_threshold += 1
+    print("Number of pages above threshold: ", num_pages_above_threshold)
+    print("After Filtering, number of keys", len(mod_dict))
+    return mod_dict
 
 def read_dict_from_file(filename):
     dict = {}
     for key, val in csv.reader(open(filename)):
-        dict[key] = val
+        dict[key] = preprocess_dict_values(val)
+    print("Original number of Keys", len(dict))
     return dict
 
 def write_dict_to_file(dict, filename):
@@ -231,54 +252,62 @@ def create_dict_by_pageid():
             prev_pageID = pageID
             user_list = []
 
-    #write_dict_to_file(page_level_dict, outputFileName)
+    write_dict_to_file(page_level_dict, outputFileName)
     inputFile.close()
     return page_level_dict
 
 
-def calculate_overlaps_of_authors_between_pages():
+def calculate_overlaps_of_authors_between_pages(index):
     
-    inputFileName = "/N/u/mmaity/Karst/WikiAnalysis/Wikidumps/Output_Logs/page_edit_list_dict.csv"
-    #inputFileName = "/N/u/mmaity/Karst/WikiAnalysis/Wikidumps/Output_Logs/sample_page_edit_list_dict.csv"
-    outputFileName = "/N/u/mmaity/Karst/WikiAnalysis/Wikidumps/Output_Logs/page_overlaps.graphml"
-    dict = read_dict_from_file(inputFileName)
+    inputFileName_global="/N/dc2/scratch/mmaity/Wikidicts/page_edit_list_dict.csv"
+    inputFileName_local="/N/dc2/scratch/mmaity/Wikidicts/dict_"+str(index)
+    #inputFileName_global = "/N/u/mmaity/Karst/WikiAnalysis/Wikidumps/Output_Logs/page_edit_list_dict.csv"
+    #inputFileName_local = "/N/u/mmaity/Karst/WikiAnalysis/Wikidumps/Output_Logs/dict_"+str(index)
+    outputFileName = "/N/u/mmaity/Karst/WikiAnalysis/Wikidumps/Output_Logs/page_overlaps_"+str(index)+".graphml"
+    print("Accessing : ", str(index))
+    dict = read_dict_from_file(inputFileName_global)
+    local_dict = read_dict_from_file(inputFileName_local)
+    #num_revisions = calculate_number_of_revs(dict)
+    #distribution_of_pageid_revisions(num_revisions)
+    #dict = filter_page_ids_by_num_authors(dict)
     G = initialize_undirected_wiki_graph()
 
+    end = time.time()
     for pageID1, user_list1 in dict.items():
-        for pageID2, user_list2 in dict.items():
-            print("<", pageID1, pageID2, ">")
+        print("<", pageID1, ">")
+        start = end
+        for pageID2, user_list2 in local_dict.items():
+            #print("<", pageID1, pageID2, ">")
             pageID1 = int(pageID1)
             pageID2 = int(pageID2)
-            #print(pageID1, pageID2)
             overlapping_J_coef = find_overlaps_between_two_pageIDs(user_list1, user_list2)
             if overlapping_J_coef != 0:
                 update_users(G, pageID1)
                 update_users(G, pageID2)
                 update_user_links(G, pageID1, pageID2, overlapping_J_coef)
+        end = time.time()
+        print("Elapsed Time: ",(end-start))
 
     nx.write_graphml(G, outputFileName)
     return
 
 def preprocess_dict_values(value):
 
-    if len(value) == 0:
-        return null
-    
+    if len(value) <= 2:
+        return None
+            #print(value, len(value))
     value = value[1:len(value)-1]
     values = [int(i) for i in value.split(',')]
     return values
 
 
 def find_overlaps_between_two_pageIDs(list1, list2):
-
-    #print("List1:", list1, len(list1))
-    #print("List2:", list2, len(list2))
     
-    if len(list1) == 2 or len(list2) == 2: #A length for string '[]'
+    if list1 is None or list2 is None:
         return 0
     
-    list1 = preprocess_dict_values(list1)
-    list2 = preprocess_dict_values(list2)
+    #list1 = preprocess_dict_values(list1)
+    #list2 = preprocess_dict_values(list2)
     
     if len(list1) > len(list2):
         tmp = list1
@@ -298,8 +327,9 @@ def find_overlaps_between_two_pageIDs(list1, list2):
 
 
 def main():
+    print(sys.argv[1])
     #page_level_dict = create_dict_by_pageid()
-    calculate_overlaps_of_authors_between_pages()
+    calculate_overlaps_of_authors_between_pages(sys.argv[1])
 
 
 
